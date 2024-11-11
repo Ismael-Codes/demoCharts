@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Gráficos de Accidentes, Licencias y Matriculados</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="assets/css/main.css" />
+    <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .chart-container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        canvas {
+            width: 100% !important;
+            height: 400px;
+        }
+        .chart-container p {
+            text-align: center;
+            font-weight: bold;
+            color: #555;
+        }
+    </style>
+</head>
+<body class="is-preload">
+
+    <h1>Gráficos de Accidentes, Licencias y Matriculados</h1>
+
+    <!-- Gráfico de Accidentes -->
+    <div class="chart-container" id="accidentes-chart-container">
+        <p>Accidentes por Tipo de Vehículo</p>
+        <canvas id="accidentesChart"></canvas>
+    </div>
+
+    <!-- Gráfico de Licencias Emitidas -->
+    <div class="chart-container" id="licencias-chart-container">
+        <p>Licencias Emitidas por Mes y Tipo</p>
+        <canvas id="licenciasChart"></canvas>
+    </div>
+
+    <!-- Gráfico de Vehículos Matriculados -->
+    <div class="chart-container" id="matriculados-chart-container">
+        <p>Vehículos Matriculados por Tipo</p>
+        <canvas id="matriculadosChart"></canvas>
+    </div>
+
+    <script>
+        // Función para obtener los datos del servidor PHP
+        async function obtenerDatos() {
+            const response = await fetch('getDataDemo.php'); // Cambia la URL si es necesario
+            const data = await response.json();
+            return data;
+        }
+
+        // Función para renderizar los gráficos
+        async function renderCharts() {
+            const data = await obtenerDatos();
+
+            // Datos de Accidentes
+            const accidentesPorVehiculo = data.datosTablas.comedatos_aiwizzards_accidentes.reduce((acc, item) => {
+                acc[item.tipo_vehiculo] = (acc[item.tipo_vehiculo] || 0) + 1;
+                return acc;
+            }, {});
+
+            const accidentesChartData = {
+                labels: Object.keys(accidentesPorVehiculo),
+                datasets: [{
+                    label: 'Número de Accidentes',
+                    data: Object.values(accidentesPorVehiculo),
+                    backgroundColor: ['#FF5733', '#33FF57', '#3357FF', '#FFEB3B', '#9C27B0'], // Colores variados
+                    borderColor: ['#FF5733', '#33FF57', '#3357FF', '#FFEB3B', '#9C27B0'],
+                    borderWidth: 1
+                }]
+            };
+
+            // Agrupación de Licencias Emitidas por Mes y Tipo de Licencia
+            const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            // Agrupar por Mes y Tipo de Licencia
+            const licenciasPorMesYTipo = {};
+
+            data.datosTablas.comedatos_aiwizzards_licencias.forEach(item => {
+                const mes = item.mes.trim();
+                const tipoLicencia = item.tipo_licencia;
+                const cantidad = item.licencias_emitidas;
+
+                if (!licenciasPorMesYTipo[mes]) {
+                    licenciasPorMesYTipo[mes] = {};
+                }
+
+                if (!licenciasPorMesYTipo[mes][tipoLicencia]) {
+                    licenciasPorMesYTipo[mes][tipoLicencia] = 0;
+                }
+
+                licenciasPorMesYTipo[mes][tipoLicencia] += cantidad;
+            });
+
+            // Crear las etiquetas y los datasets para el gráfico
+            const licenciasChartData = {
+                labels: meses,
+                datasets: []
+            };
+
+            // Definir colores para los diferentes tipos de licencia
+            const tiposLicencia = ['A1 - Automovilista', 'A2 - Chofer', 'A3 - Motociclista', 'A4 - Transporte Público'];
+            const colores = ['#FF9F40', '#4CAF50', '#2196F3', '#FFEB3B'];
+
+            tiposLicencia.forEach((tipo, index) => {
+                const dataset = {
+                    label: tipo,
+                    data: meses.map(mes => licenciasPorMesYTipo[mes] && licenciasPorMesYTipo[mes][tipo] ? licenciasPorMesYTipo[mes][tipo] : 0),
+                    backgroundColor: colores[index],
+                    borderColor: colores[index],
+                    borderWidth: 1
+                };
+                licenciasChartData.datasets.push(dataset);
+            });
+
+            // Datos de Vehículos Matriculados por tipo de vehículo
+            const matriculadosTipos = data.datosTablas.comedatos_aiwizzards_matriculados.map(item => item.tipo_vehiculo);
+            const matriculadosCantidad = data.datosTablas.comedatos_aiwizzards_matriculados.map(item => item.cantidad);
+
+            const matriculadosChartData = {
+                labels: matriculadosTipos,
+                datasets: [{
+                    label: 'Cantidad de Vehículos Matriculados',
+                    data: matriculadosCantidad,
+                    backgroundColor: ['#FFC107', '#F44336', '#8BC34A', '#9C27B0', '#3F51B5'], // Colores diferentes para cada tipo de vehículo
+                    borderColor: ['#FFC107', '#F44336', '#8BC34A', '#9C27B0', '#3F51B5'],
+                    borderWidth: 1
+                }]
+            };
+
+            // Configuración del gráfico de Accidentes
+            new Chart(document.getElementById('accidentesChart'), {
+                type: 'bar',
+                data: accidentesChartData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.dataset.label + ': ' + tooltipItem.raw;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Tipo de Vehículo'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Número de Accidentes'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Configuración del gráfico de Licencias Emitidas
+            new Chart(document.getElementById('licenciasChart'), {
+                type: 'bar',
+                data: licenciasChartData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.dataset.label + ': ' + tooltipItem.raw;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Mes'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Licencias Emitidas'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Configuración del gráfico de Vehículos Matriculados
+            new Chart(document.getElementById('matriculadosChart'), {
+                type: 'doughnut',
+                data: matriculadosChartData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.dataset.label + ': ' + tooltipItem.raw;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Llamamos a la función para renderizar los gráficos
+        renderCharts();
+    </script>
+
+    <!-- Footer -->
+    <footer id="footer">
+        <div class="inner">
+            <section>
+                <h2>Get in touch</h2>
+                <form method="post" action="#">
+                    <div class="fields">
+                        <div class="field half">
+                            <input type="text" name="name" id="name" placeholder="Name" />
+                        </div>
+                        <div class="field half">
+                            <input type="email" name="email" id="email" placeholder="Email" />
+                        </div>
+                        <div class="field">
+                            <textarea name="message" id="message" placeholder="Message"></textarea>
+                        </div>
+                    </div>
+                    <ul class="actions">
+                        <li><input type="submit" value="Send" class="primary" /></li>
+                    </ul>
+                </form>
+            </section>
+        </div>
+    </footer>
+</body>
+</html>
