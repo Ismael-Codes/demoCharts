@@ -38,6 +38,8 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 // Ejecutar la solicitud
 $response = curl_exec($ch);
 
+
+
 // Verificar si hubo errores en la solicitud cURL
 if ($response === false) {
     // Si hay un error, devolverlo
@@ -46,6 +48,9 @@ if ($response === false) {
     echo json_encode(["error" => "cURL Error: " . $error]);
     exit;
 }
+
+
+
 
 // Cerrar cURL
 curl_close($ch);

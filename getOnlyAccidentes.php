@@ -1,6 +1,6 @@
 <?php
 // URL de la API
-$api_url = "getData.php";  // Cambia esta URL con la correcta
+$api_url = "https://tu-api-endpoint.com";  // Cambia esta URL con la correcta
 
 // Iniciar cURL
 $ch = curl_init();
