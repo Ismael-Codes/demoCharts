@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predicción de Accidentes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1, h2 {
+            color: #4CAF50;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .chart-container {
+            margin: 20px 0;
+        }
+        canvas {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Predicción de Accidentes</h1>
+    <p>La educación vial es fundamental para la sociedad por varias razones. Conocer y respetar las señalizaciones y reglamentos de tránsito contribuye significativamente a la seguridad vial, reduciendo el riesgo de accidentes y protegiendo tanto a conductores como a peatones. Además, fomenta el respeto y la convivencia en las vías públicas, promoviendo un ambiente más ordenado y menos conflictivo. En este análisis, presentamos datos sobre accidentes por tipo de vehículo, visualizados mediante gráficos para facilitar la comprensión y extraer conclusiones significativas.</p>
+
+    <div class="chart-container">
+        <h2>Accidentes por Mes</h2>
+        <canvas id="accidentesChart"></canvas>
+        <p>Este gráfico muestra la distribución de accidentes por mes. Los datos indican que los accidentes varían a lo largo del año.</p>
+    </div>
+
+    <div class="chart-container">
+        <h2>Predicción de Accidentes</h2>
+        <canvas id="prediccionChart"></canvas>
+        <p>Este gráfico de regresión lineal muestra la tendencia proyectada para el próximo año basada en los datos actuales. La línea de regresión ayuda a visualizar cómo podrían comportarse las variables en el futuro. En este caso, la tendencia muestra un aumento en el número de accidentes, lo que sugiere la necesidad de implementar medidas de seguridad vial más efectivas y campañas de concienciación para reducir los accidentes.</p>
+    </div>
+</div>
+
+<script>
+    // Función para obtener datos desde regresion.php
+    async function obtenerDatos() {
+        const response = await fetch('predictor.php');
+        const data = await response.json();
+        return data;
+    }
+
+    // Función para inicializar los gráficos
+    async function inicializarGraficos() {
+        const datos = await obtenerDatos();
+
+        if (datos.error) {
+            console.error(datos.error);
+            return;
+        }
+
+        // Datos para el gráfico de accidentes
+        const accidentesData = {
+            labels: datos.meses,
+            datasets: [{
+                label: 'Número de Accidentes',
+                data: datos.accidentes,
+                backgroundColor: '#4CAF50',
+                borderColor: '#388E3C',
+                borderWidth: 1
+            }]
+        };
+
+        // Datos para el gráfico de predicción
+        const prediccionData = {
+            labels: datos.meses.concat(Array.from({ length: 12 }, (_, i) => datos.meses.length + i + 1)),
+            datasets: [
+                {
+                    label: 'Número de Accidentes',
+                    data: datos.accidentes.concat(Array(12).fill(null)),
+                    backgroundColor: '#4CAF50',
+                    borderColor: '#388E3C',
+                    borderWidth: 1,
+                    fill: false
+                },
+                {
+                    label: 'Predicción',
+                    data: datos.accidentes.concat(datos.predicciones),
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: '#FF6384',
+                    borderWidth: 1,
+                    fill: false,
+                    type: 'line'
+                }
+            ]
+        };
+
+        // Configuración de los gráficos
+        const configAccidentes = {
+            type: 'bar',
+            data: accidentesData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Accidentes por Mes'
+                    }
+                }
+            }
+        };
+
+        const configPrediccion = {
+            type: 'line',
+            data: prediccionData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Predicción de Accidentes'
+                    }
+                }
+            }
+        };
+
+        // Inicializar los gráficos
+        const ctxAccidentes = document.getElementById('accidentesChart').getContext('2d');
+        new Chart(ctxAccidentes, configAccidentes);
+
+        const ctxPrediccion = document.getElementById('prediccionChart').getContext('2d');
+        new Chart(ctxPrediccion, configPrediccion);
+    }
+
+    // Llamar a la función para inicializar los gráficos
+    inicializarGraficos();
+</script>
+</body>
+</html>

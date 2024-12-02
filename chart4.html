@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Educación Vial y Análisis de Datos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1, h2 {
+            color: #4CAF50;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .chart-container {
+            margin: 20px 0;
+        }
+        canvas {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Educación Vial y Análisis de Datos</h1>
+    <p>La educación vial es fundamental para la sociedad por varias razones. Conocer y respetar las señalizaciones y reglamentos de tránsito contribuye significativamente a la seguridad vial, reduciendo el riesgo de accidentes y protegiendo tanto a conductores como a peatones. Además, fomenta el respeto y la convivencia en las vías públicas, promoviendo un ambiente más ordenado y menos conflictivo. En este análisis, presentamos datos sobre accidentes por tipo de vehículo, licencias emitidas por fecha y vehículos matriculados, visualizados mediante gráficos para facilitar la comprensión y extraer conclusiones significativas.</p>
+
+    <div class="chart-container">
+        <h2>Accidentes por Tipo de Vehículo</h2>
+        <canvas id="accidentesChart"></canvas>
+        <p>Este gráfico muestra la distribución de accidentes por tipo de vehículo. Los datos indican que los carros son los vehículos más involucrados en accidentes, seguidos por motos y bicicletas.</p>
+    </div>
+
+    <div class="chart-container">
+        <h2>Licencias Emitidas por Fecha</h2>
+        <canvas id="licenciasChart"></canvas>
+        <p>Este gráfico de líneas muestra el número de licencias emitidas a lo largo del tiempo. Se observa un aumento constante en la emisión de licencias, lo que refleja una creciente demanda de vehículos y la necesidad de una mayor educación vial.</p>
+    </div>
+
+    <div class="chart-container">
+        <h2>Distribución de Vehículos Matriculados</h2>
+        <canvas id="matriculadosChart"></canvas>
+        <p>Este histograma muestra la distribución de vehículos matriculados. La tendencia indica un aumento en el número de vehículos en circulación, lo que puede aumentar la congestión y el riesgo de accidentes si no se gestionan adecuadamente.</p>
+    </div>
+
+    <div class="chart-container">
+        <h2>Predicción de Tendencias con Regresión Lineal</h2>
+        <canvas id="regresionChart"></canvas>
+        <p>Este gráfico de regresión lineal muestra la tendencia proyectada para el próximo año basada en los datos actuales. La línea de regresión ayuda a visualizar cómo podrían comportarse las variables en el futuro.</p>
+    </div>
+</div>
+
+<script>
+    // Función para obtener datos desde data.php
+    async function obtenerDatos() {
+        const response = await fetch('data.php');
+        const data = await response.json();
+        return data.datosTablas;
+    }
+
+    // Función para calcular la regresión lineal
+    function calcularRegresionLineal(x, y) {
+        const n = x.length;
+        const x_mean = x.reduce((a, b) => a + b) / n;
+        const y_mean = y.reduce((a, b) => a + b) / n;
+        const xy = x.map((xi, i) => xi * y[i]);
+        const xx = x.map(xi => xi * xi);
+        const xy_mean = xy.reduce((a, b) => a + b) / n;
+        const xx_mean = xx.reduce((a, b) => a + b) / n;
+        const slope = (xy_mean - x_mean * y_mean) / (xx_mean - x_mean * x_mean);
+        const intercept = y_mean - slope * x_mean;
+        return { slope, intercept };
+    }
+
+    // Función para inicializar los gráficos
+    async function inicializarGraficos() {
+        const datos = await obtenerDatos();
+
+        // Datos para el gráfico de accidentes
+        const accidentesData = {
+            labels: datos.comedatos_aiwizzards_accidentes.map(item => item.tipo_vehiculo),
+            datasets: [{
+                label: 'Número de Accidentes',
+                data: datos.comedatos_aiwizzards_accidentes.map(item => item.id),
+                backgroundColor: ['#4CAF50', '#FF9800', '#2196F3'],
+                borderColor: ['#388E3C', '#F57C00', '#1976D2'],
+                borderWidth: 1
+            }]
+        };
+
+        // Datos para el gráfico de licencias
+        const licenciasData = {
+            labels: datos.comedatos_aiwizzards_licencias.map(item => item.mes),
+            datasets: [{
+                label: 'Licencias Emitidas',
+                data: datos.comedatos_aiwizzards_licencias.map(item => item.licencias_emitidas),
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: '#4CAF50',
+                borderWidth: 1,
+                fill: true
+            }]
+        };
+
+        // Datos para el gráfico de vehículos matriculados
+        const matriculadosData = {
+            labels: datos.comedatos_aiwizzards_matriculados.map(item => item.tipo_vehiculo),
+            datasets: [{
+                label: 'Número de Vehículos',
+                data: datos.comedatos_aiwizzards_matriculados.map(item => item.cantidad),
+                backgroundColor: '#FF9800',
+                borderColor: '#F57C00',
+                borderWidth: 1
+            }]
+        };
+
+        // Datos para el gráfico de regresión lineal
+        const x = datos.comedatos_aiwizzards_licencias.map((item, index) => index + 1);
+        const y = datos.comedatos_aiwizzards_licencias.map(item => item.licencias_emitidas);
+        const { slope, intercept } = calcularRegresionLineal(x, y);
+        const y_pred = x.map(xi => slope * xi + intercept);
+
+        const regresionData = {
+            labels: datos.comedatos_aiwizzards_licencias.map(item => item.mes),
+            datasets: [
+                {
+                    label: 'Licencias Emitidas',
+                    data: y,
+                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                    borderColor: '#4CAF50',
+                    borderWidth: 1,
+                    fill: true
+                },
+                {
+                    label: 'Predicción',
+                    data: y_pred,
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: '#FF6384',
+                    borderWidth: 1,
+                    fill: false,
+                    type: 'line'
+                }
+            ]
+        };
+
+        // Configuración de los gráficos
+        const configAccidentes = {
+            type: 'bar',
+            data: accidentesData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Accidentes por Tipo de Vehículo'
+                    }
+                }
+            }
+        };
+
+        const configLicencias = {
+            type: 'line',
+            data: licenciasData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Licencias Emitidas por Fecha'
+                    }
+                }
+            }
+        };
+
+        const configMatriculados = {
+            type: 'bar',
+            data: matriculadosData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Distribución de Vehículos Matriculados'
+                    }
+                }
+            }
+        };
+
+        const configRegresion = {
+            type: 'line',
+            data: regresionData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Predicción de Tendencias con Regresión Lineal'
+                    }
+                }
+            }
+        };
+
+        // Inicializar los gráficos
+        const ctxAccidentes = document.getElementById('accidentesChart').getContext('2d');
+        new Chart(ctxAccidentes, configAccidentes);
+
+        const ctxLicencias = document.getElementById('licenciasChart').getContext('2d');
+        new Chart(ctxLicencias, configLicencias);
+
+        const ctxMatriculados = document.getElementById('matriculadosChart').getContext('2d');
+        new Chart(ctxMatriculados, configMatriculados);
+
+        const ctxRegresion = document.getElementById('regresionChart').getContext('2d');
+        new Chart(ctxRegresion, configRegresion);
+    }
+
+    // Llamar a la función para inicializar los gráficos
+    inicializarGraficos();
+</script>
+</body>
+</html>
