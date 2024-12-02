@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predicción de Licencias</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+    h1, h2 {
+      color: #4CAF50;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .chart-container {
+      margin: 20px 0;
+    }
+    canvas {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>Predicción de Licencias</h1>
+  <p>Este análisis muestra la predicción de la cantidad de licencias emitidas para el próximo año.</p>
+
+  <div class="chart-container">
+    <h2>Predicción de Licencias para el Próximo Año</h2>
+    <canvas id="prediccionLicenciasChart"></canvas>
+    <p>Este gráfico de regresión lineal muestra la tendencia proyectada para el próximo año basada en los datos actuales. La línea de regresión ayuda a visualizar cómo podrían comportarse las variables en el futuro.</p>
+  </div>
+</div>
+
+<script>
+  // Función para obtener datos desde getData.php
+  async function obtenerDatos() {
+    const response = await fetch('getData.php');
+    const data = await response.json();
+    return data;
+  }
+
+  // Función para inicializar los gráficos
+  async function inicializarGraficos() {
+    const datos = await obtenerDatos();
+
+    if (datos.error) {
+      console.error(datos.error);
+      return;
+    }
+
+    const licencias = datos.datosTablas.comedatos_aiwizzards_licencias;
+
+    // Contar licencias emitidas por mes
+    const licenciasPorMes = {};
+    licencias.forEach(dato => {
+      const mes = dato.mes.trim();
+      if (!licenciasPorMes[mes]) {
+        licenciasPorMes[mes] = 0;
+      }
+      licenciasPorMes[mes] += dato.licencias_emitidas;
+    });
+
+    const meses = Object.keys(licenciasPorMes);
+    const licenciasCount = Object.values(licenciasPorMes);
+
+    // Convertir los nombres de los meses a números
+    const mesesNumericos = meses.map(mes => {
+      const meses = {
+        "Enero": 1,
+        "Febrero": 2,
+        "Marzo": 3,
+        "Abril": 4,
+        "Mayo": 5,
+        "Junio": 6,
+        "Julio": 7,
+        "Agosto": 8,
+        "Septiembre": 9,
+        "Octubre": 10,
+        "Noviembre": 11,
+        "Diciembre": 12
+      };
+      return meses[mes];
+    });
+
+    // Calcular la regresión lineal
+    const n = mesesNumericos.length;
+    const x_mean = mesesNumericos.reduce((a, b) => a + b, 0) / n;
+    const y_mean = licenciasCount.reduce((a, b) => a + b, 0) / n;
+
+    let numerador = 0;
+    let denominador = 0;
+    for (let i = 0; i < n; i++) {
+      numerador += (mesesNumericos[i] - x_mean) * (licenciasCount[i] - y_mean);
+      denominador += (mesesNumericos[i] - x_mean) ** 2;
+    }
+
+    const slope = numerador / denominador;
+    const intercept = y_mean - slope * x_mean;
+
+    // Predecir las licencias para los próximos 12 meses
+    const predicciones = [];
+    for (let i = 1; i <= 12; i++) {
+      predicciones.push(slope * (n + i) + intercept);
+    }
+
+    const prediccionData = { labels: meses.concat(Array.from({ length: 12 }, (_, i) => `Mes ${i + 1}`)),
+      datasets: [
+        {
+          label: 'Licencias Emitidas',
+          data: licenciasCount.concat(Array(12).fill(null)),
+          backgroundColor: '#FF6384',
+          borderColor: '#FF6384',
+          borderWidth: 1,
+          fill: false
+        },
+        {
+          label: 'Predicción',
+          data: licenciasCount.concat(predicciones),
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          borderColor: '#36A2EB',
+          borderWidth: 1,
+          fill: false,
+          type: 'line'
+        }
+      ]
+    };
+
+    // Configuración del gráfico
+    const configPrediccion = {
+      type: 'line',
+      data: prediccionData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          title: {
+            display: true,
+            text: 'Predicción de Licencias'
+          }
+        }
+      }
+    };
+
+    // Inicializar el gráfico
+    const ctxPrediccion = document.getElementById('prediccionLicenciasChart').getContext('2d');
+    new Chart(ctxPrediccion, configPrediccion);
+  }
+
+  // Llamar a la función para inicializar los gráficos
+  inicializarGraficos();
+</script>
+</body>
+</html>

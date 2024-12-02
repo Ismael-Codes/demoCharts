@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análisis Descriptivo de Licencias</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+    h1, h2 {
+      color: #4CAF50;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .chart-container {
+      margin: 20px 0;
+    }
+    canvas {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>Análisis Descriptivo de Licencias</h1>
+  <p>Este análisis muestra la cantidad de licencias emitidas por mes.</p>
+
+  <div class="chart-container">
+    <h2>Licencias Emitidas por Mes</h2>
+    <canvas id="licenciasChart"></canvas>
+    <p>Este gráfico muestra la cantidad de licencias emitidas por mes. Los datos indican la variabilidad en la emisión de licencias a lo largo del año.</p>
+  </div>
+</div>
+
+<script>
+  // Función para obtener datos desde getData.php
+  async function obtenerDatos() {
+    const response = await fetch('getData.php');
+    const data = await response.json();
+    return data;
+  }
+
+  // Función para inicializar los gráficos
+  async function inicializarGraficos() {
+    const datos = await obtenerDatos();
+
+    if (datos.error) {
+      console.error(datos.error);
+      return;
+    }
+
+    const licencias = datos.datosTablas.comedatos_aiwizzards_licencias;
+
+    // Contar licencias emitidas por mes
+    const licenciasPorMes = {};
+    licencias.forEach(dato => {
+      const mes = dato.mes.trim();
+      if (!licenciasPorMes[mes]) {
+        licenciasPorMes[mes] = 0;
+      }
+      licenciasPorMes[mes] += dato.licencias_emitidas;
+    });
+
+    const meses = Object.keys(licenciasPorMes);
+    const licenciasCount = Object.values(licenciasPorMes);
+
+    // Datos para el gráfico de licencias
+    const licenciasData = {
+      labels: meses,
+      datasets: [{
+        label: 'Licencias Emitidas',
+        data: licenciasCount,
+        backgroundColor: '#FF6384',
+        borderColor: '#FF6384',
+        borderWidth: 1
+      }]
+    };
+
+    // Configuración del gráfico
+    const configLicencias = {
+      type: 'bar',
+      data: licenciasData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          title: {
+            display: true,
+            text: 'Licencias Emitidas por Mes'
+          }
+        }
+      }
+    };
+
+    // Inicializar el gráfico
+    const ctxLicencias = document.getElementById('licenciasChart').getContext('2d');
+    new Chart(ctxLicencias, configLicencias);
+  }
+
+  // Llamar a la función para inicializar los gráficos
+  inicializarGraficos();
+</script>
+</body>
+</html>

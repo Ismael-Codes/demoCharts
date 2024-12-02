@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accidentes de Vehículos - Análisis Descriptivo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .stats {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+<h1>Accidentes de Vehículos - Datos y Análisis Descriptivo</h1>
+<h2 id="equipoNombre"></h2>
+
+<table id="accidentesTable">
+  <thead>
+  <tr>
+    <th>Mes</th>
+    <th>Año</th>
+    <th>Tipo de Vehículo</th>
+    <th>Género del Conductor</th>
+    <th>Licencia</th>
+    <th>Licencia Vigente</th>
+    <th>Cantidad de Accidentes</th>
+  </tr>
+  </thead>
+  <tbody>
+  <!-- Los datos se llenarán con JavaScript -->
+  </tbody>
+</table>
+
+<div class="stats">
+  <h3>Análisis Descriptivo</h3>
+  <p><strong>Promedio de Accidentes:</strong> <span id="promedio"></span></p>
+  <p><strong>Máximo de Accidentes:</strong> <span id="maximo"></span></p>
+  <p><strong>Mínimo de Accidentes:</strong> <span id="minimo"></span></p>
+  <p><strong>Desviación Estándar de Accidentes:</strong> <span id="desviacion"></span></p>
+</div>
+
+<script>
+  // Función para cargar los datos desde el archivo PHP
+  fetch('getData.php')
+          .then(response => response.json())
+          .then(data => {
+            // Mostrar el nombre del equipo
+            document.getElementById('equipoNombre').innerText = `Equipo: ${data.nombreEquipo}`;
+
+            // Obtener la tabla de accidentes
+            const accidentes = data.datosTablas.comedatos_aiwizzards_accidentes;
+            const tableBody = document.querySelector('#accidentesTable tbody');
+
+            // Arrays para cálculos estadísticos y proyección
+            const cantidadAccidentes = [];
+            const meses = [];
+
+            // Llenar la tabla con los datos
+            accidentes.forEach(accidente => {
+              const row = document.createElement('tr');
+
+              row.innerHTML = `
+                        <td>${accidente.mes}</td>
+                        <td>${accidente.anio}</td>
+                        <td>${accidente.tipo_vehiculo}</td>
+                        <td>${accidente.genero_conductor}</td>
+                        <td>${accidente.tiene_licencia}</td>
+                        <td>${accidente.licencia_vigente}</td>
+                        <td>${accidente.cantidad_accidentes !== null ? accidente.cantidad_accidentes : 'No disponible'}</td>
+                    `;
+
+              tableBody.appendChild(row);
+
+              // Si la cantidad de accidentes no es null y es un número, agregarla al array para análisis
+              if (accidente.cantidad_accidentes !== null && !isNaN(accidente.cantidad_accidentes)) {
+                cantidadAccidentes.push(accidente.cantidad_accidentes);
+                meses.push(accidente.mes);
+              }
+            });
+
+            // Realizar el análisis descriptivo
+            if (cantidadAccidentes.length > 0) {
+              const promedio = calcularPromedio(cantidadAccidentes);
+              const maximo = Math.max(...cantidadAccidentes);
+              const minimo = Math.min(...cantidadAccidentes);
+              const desviacion = calcularDesviacionEstandar(cantidadAccidentes, promedio);
+
+              // Mostrar los resultados en el HTML
+              document.getElementById('promedio').innerText = promedio.toFixed(2);
+              document.getElementById('maximo').innerText = maximo;
+              document.getElementById('minimo').innerText = minimo;
+              document.getElementById('desviacion').innerText = desviacion.toFixed(2);
+            } else {
+              // Si no hay datos de accidentes disponibles
+              document.getElementById('promedio').innerText = 'No disponible';
+              document.getElementById('maximo').innerText = 'No disponible';
+              document.getElementById('minimo').innerText = 'No disponible';
+              document.getElementById('desviacion').innerText = 'No disponible';
+            }
+
+            // Función para calcular el promedio
+            function calcularPromedio(array) {
+              const suma = array.reduce((acc, num) => acc + num, 0);
+              return suma / array.length;
+            }
+
+            // Función para calcular la desviación estándar
+            function calcularDesviacionEstandar(array, promedio) {
+              const sumaCuadrados = array.reduce((acc, num) => acc + Math.pow(num - promedio, 2), 0);
+              return Math.sqrt(sumaCuadrados / array.length);
+            }
+          });
+</script>
+</body>
+</html>

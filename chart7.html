@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Accidentes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1, h2 {
+            color: #4CAF50;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .chart-container {
+            margin: 20px 0;
+        }
+        canvas {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Dashboard de Accidentes</h1>
+    <p>Este dashboard muestra un análisis estadístico de los accidentes y una predicción del comportamiento de los accidentes para el próximo año.</p>
+
+    <!-- Sección de Estadística Descriptiva -->
+    <h2>Estadística Descriptiva</h2>
+    <div class="chart-container">
+        <h3>Accidentes por Mes</h3>
+        <canvas id="accidentesChart"></canvas>
+        <p>Este gráfico muestra la distribución de accidentes por mes. Los datos indican que los accidentes varían a lo largo del año.</p>
+    </div>
+    <div class="chart-container">
+        <h3>Licencias Emitidas por Mes</h3>
+        <canvas id="licenciasChart"></canvas>
+        <p>Este gráfico muestra la cantidad de licencias emitidas por mes. Los datos indican la variabilidad en la emisión de licencias a lo largo del año.</p>
+    </div>
+    <div class="chart-container">
+        <h3>Vehículos Matriculados por Tipo</h3>
+        <canvas id="matriculadosChart"></canvas>
+        <p>Este gráfico muestra la cantidad de vehículos matriculados por tipo. Los datos indican la distribución de diferentes tipos de vehículos matriculados.</p>
+    </div>
+
+    <!-- Sección de Predicción -->
+    <h2>Predicción de Accidentes</h2>
+    <div class="chart-container">
+        <h3>Predicción de Accidentes para el Próximo Año</h3>
+        <canvas id="prediccionChart"></canvas>
+        <p>Este gráfico de regresión lineal muestra la tendencia proyectada para el próximo año basada en los datos actuales. La línea de regresión ayuda a visualizar cómo podrían comportarse las variables en el futuro.</p>
+    </div>
+</div>
+
+<script>
+    // Función para obtener datos desde getData.php
+    async function obtenerDatos() {
+        const response = await fetch('getData.php');
+        const data = await response.json();
+        return data;
+    }
+
+    // Función para inicializar los gráficos
+    async function inicializarGraficos() {
+        const datos = await obtenerDatos();
+
+        if (datos.error) {
+            console.error(datos.error);
+            return;
+        }
+
+        const accidentes = datos.datosTablas.comedatos_aiwizzards_accidentes;
+        const licencias = datos.datosTablas.comedatos_aiwizzards_licencias;
+        const matriculados = datos.datosTablas.comedatos_aiwizzards_matriculados;
+
+        // Contar accidentes por mes
+        const accidentesPorMes = {};
+        accidentes.forEach(dato => {
+            const mes = dato.mes.trim();
+            if (!accidentesPorMes[mes]) {
+                accidentesPorMes[mes] = 0;
+            }
+            accidentesPorMes[mes]++;
+        });
+
+        const meses = Object.keys(accidentesPorMes);
+        const accidentesCount = Object.values(accidentesPorMes);
+
+        // Contar licencias emitidas por mes
+        const licenciasPorMes = {};
+        licencias.forEach(dato => {
+            const mes = dato.mes.trim();
+            if (!licenciasPorMes[mes]) {
+                licenciasPorMes[mes] = 0;
+            }
+            licenciasPorMes[mes] += dato.licencias_emitidas;
+        });
+
+        const licenciasCount = Object.values(licenciasPorMes);
+
+        // Contar vehículos matriculados por tipo
+        const matriculadosPorTipo = {};
+        matriculados.forEach(dato => {
+            const tipo = dato.tipo_vehiculo.trim();
+            if (!matriculadosPorTipo[tipo]) {
+                matriculadosPorTipo[tipo] = 0;
+            }
+            matriculadosPorTipo[tipo] += dato.cantidad;
+        });
+
+        const tiposVehiculo = Object.keys(matriculadosPorTipo);
+        const matriculadosCount = Object.values(matriculadosPorTipo);
+
+        // Convertir los nombres de los meses a números
+        const mesesNumericos = meses.map(mes => {
+            const meses = {
+                "Enero": 1,
+                "Febrero": 2,
+                "Marzo": 3,
+                "Abril": 4,
+                "Mayo": 5,
+                "Junio": 6,
+                "Julio": 7,
+                "Agosto": 8,
+                "Septiembre": 9,
+                "Octubre": 10,
+                "Noviembre": 11,
+                "Diciembre": 12
+            };
+            return meses[mes];
+        });
+
+        // Calcular la regresión lineal
+        const n = mesesNumericos.length;
+        const x_mean = mesesNumericos.reduce((a, b) => a + b, 0) / n;
+        const y_mean = accidentesCount.reduce((a, b) => a + b, 0) / n;
+
+        let numerador = 0;
+        let denominador = 0;
+        for (let i = 0; i < n; i++) {
+            numerador += (mesesNumericos[i] - x_mean) * (accidentesCount[i] - y_mean);
+            denominador += (mesesNumericos[i] - x_mean) ** 2;
+        }
+
+        const slope = numerador / denominador;
+        const intercept = y_mean - slope * x_mean;
+
+        // Predecir los accidentes para los próximos 12 meses
+        const predicciones = [];
+        for (let i = 1; i <= 12; i++) {
+            predicciones.push(slope * (n + i) + intercept);
+        }
+
+        // Datos para el gráfico de accidentes
+        const accidentesData = {
+            labels: meses,
+            datasets: [{
+                label: 'Número de Accidentes',
+                data: accidentesCount,
+                backgroundColor: '#4CAF50',
+                borderColor: '#388E3C',
+                borderWidth: 1
+            }]
+        };
+
+        // Datos para el gráfico de licencias
+        const licenciasData = {
+            labels: meses,
+            datasets: [{
+                label: 'Licencias Emitidas',
+                data: licenciasCount,
+                backgroundColor: '#FF6384',
+                borderColor: '#FF6384',
+                borderWidth: 1
+            }]
+        };
+
+        // Datos para el gráfico de vehículos matriculados
+        const matriculadosData = {
+            labels: tiposVehiculo,
+            datasets: [{
+                label: 'Vehículos Matriculados',
+                data: matriculadosCount,
+                backgroundColor: '#36A2EB',
+                borderColor: '#36A2EB',
+                borderWidth: 1
+            }]
+        };
+
+        // Datos para el gráfico de predicción
+        const prediccionData = {
+            labels: meses.concat(Array.from({ length: 12 }, (_, i) => `Mes ${i + 1}`)),
+            datasets: [
+                {
+                    label: 'Número de Accidentes',
+                    data: accidentesCount.concat(Array(12).fill(null)),
+                    backgroundColor: '#4CAF50',
+                    borderColor: '#388E3C',
+                    borderWidth: 1,
+                    fill: false
+                },
+                {
+                    label: 'Predicción',
+                    data: accidentesCount.concat(predicciones),
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: '#FF6384',
+                    borderWidth: 1,
+                    fill: false,
+                    type: 'line'
+                }
+            ]
+        };
+
+        // Configuración de los gráficos
+        const configAccidentes = {
+            type: 'bar',
+            data: accidentesData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Accidentes por Mes'
+                    }
+                }
+            }
+        };
+
+        const configLicencias = {
+            type: 'bar',
+            data: licenciasData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Licencias Emitidas por Mes'
+                    }
+                }
+            }
+        };
+
+        const configMatriculados = {
+            type: 'bar',
+            data: matriculadosData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Vehículos Matriculados por Tipo'
+                    }
+                }
+            }
+        };
+
+        const configPrediccion = {
+            type: 'line',
+            data: prediccionData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Predicción de Accidentes'
+                    }
+                }
+            }
+        };
+
+        // Inicializar los gráficos
+        const ctxAccidentes = document.getElementById('accidentesChart').getContext('2d');
+        new Chart(ctxAccidentes, configAccidentes);
+
+        const ctxLicencias = document.getElementById('licenciasChart').getContext('2d');
+        new Chart(ctxLicencias, configLicencias);
+
+        const ctxMatriculados = document.getElementById('matriculadosChart').getContext('2d');
+        new Chart(ctxMatriculados, configMatriculados);
+
+        const ctxPrediccion = document.getElementById('prediccionChart').getContext('2d');
+        new Chart(ctxPrediccion, configPrediccion);
+    }
+
+    // Llamar a la función para inicializar los gráficos
+    inicializarGraficos();
+</script>
+</body>
+</html>

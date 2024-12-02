@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proyección de Accidentes - Predicción</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .prediction {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+    }
+    .prediction input {
+      padding: 8px;
+      margin: 10px 0;
+    }
+    .prediction button {
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .prediction button:hover {
+      background-color: #45a049;
+    }
+    canvas {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<h1>Proyección de Accidentes de Vehículos</h1>
+<div class="prediction">
+  <h3>Proyección de Accidentes</h3>
+  <label for="mesesProyectar">¿Cuántos meses desea proyectar?</label>
+  <input type="number" id="mesesProyectar" min="1" max="12" value="6">
+  <button onclick="proyectarAccidentes()">Proyectar</button>
+
+  <h4>Proyección de Accidentes para los próximos meses:</h4>
+  <ul id="proyeccionesList"></ul>
+
+  <canvas id="chartCanvas" width="400" height="200"></canvas>
+</div>
+
+<script>
+  // Datos de ejemplo
+  const meses = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const cantidadAccidentes = [30, 35, 40, 38, 37, 36, 45, 50, 60, 55, 48, 42]; // Datos históricos de accidentes
+
+  // Función para hacer la proyección
+  function proyectarAccidentes() {
+    const mesesProyectar = document.getElementById('mesesProyectar').value;
+    const proyeccionesList = document.getElementById('proyeccionesList');
+    const chartCanvas = document.getElementById('chartCanvas');
+
+    // Cálculo de la regresión lineal
+    const { m, b } = calcularRegresionLineal(meses, cantidadAccidentes);
+
+    // Limpiar las proyecciones previas
+    proyeccionesList.innerHTML = '';
+
+    // Arreglos para la gráfica
+    const mesesProyectados = [];
+    const accidentesProyectados = [];
+
+    // Proyectar para los próximos meses
+    for (let i = 1; i <= mesesProyectar; i++) {
+      const mesProyectado = meses.length + i; // Mes proyectado en términos de índice
+      const accidentesProyectadosMes = m * mesProyectado + b;
+
+      // Agregar datos para la gráfica
+      mesesProyectados.push(mesProyectado);
+      accidentesProyectados.push(accidentesProyectadosMes);
+
+      // Mostrar la proyección en la lista
+      const listaItem = document.createElement('li');
+      listaItem.textContent = `Mes ${mesProyectado}: ${accidentesProyectadosMes.toFixed(2)} accidentes`;
+      proyeccionesList.appendChild(listaItem);
+    }
+
+    // Crear la gráfica de proyección
+    new Chart(chartCanvas, {
+      type: 'line',
+      data: {
+        labels: mesesProyectados,
+        datasets: [{
+          label: 'Proyección de Accidentes',
+          data: accidentesProyectados,
+          borderColor: 'rgba(75, 192, 192, 1)',
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Mes'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Cantidad de Accidentes'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Función para calcular la regresión lineal (pendiente m y el intercepto b)
+  function calcularRegresionLineal(x, y) {
+    const n = x.length;
+    const sumX = x.reduce((acc, xi) => acc + xi, 0);
+    const sumY = y.reduce((acc, yi) => acc + yi, 0);
+    const sumXY = x.reduce((acc, xi, idx) => acc + xi * y[idx], 0);
+    const sumX2 = x.reduce((acc, xi) => acc + xi * xi, 0);
+
+    const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const b = (sumY - m * sumX) / n;
+
+    return { m, b };
+  }
+</script>
+</body>
+</html>
